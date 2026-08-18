@@ -1,0 +1,45 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,600&family=Inter:wght@400;500&display=swap');
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #12100e; /* Deep warm espresso */
+  background-image: radial-gradient(circle at center, #2a1f1a 0%, #0a0807 100%);
+  color: #e5e5e5;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+h1, h2, h3 {
+  font-family: 'Playfair Display', serif;
+}
+
+/* Cozy Warm Glow Utilities */
+.glass-panel {
+  background: rgba(30, 20, 15, 0.4);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 230, 200, 0.05);
+  box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.8);
+}
+
+.cozy-glow-amber {
+  box-shadow: 0 0 25px rgba(251, 191, 36, 0.2), inset 0 0 15px rgba(251, 191, 36, 0.1);
+}
+
+.cozy-glow-rose {
+  box-shadow: 0 0 30px rgba(244, 63, 94, 0.2), inset 0 0 20px rgba(244, 63, 94, 0.15);
+}
+
+/* Noise overlay for leather/grain texture feel */
+.bg-noise {
+  position: relative;
+}
+.bg-noise::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
