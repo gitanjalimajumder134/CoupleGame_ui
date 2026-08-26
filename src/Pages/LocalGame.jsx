@@ -4,6 +4,7 @@ import { recordUsedQuestion } from '../utils/history';
 import { formatCardText } from '../utils/text';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flame, AlertTriangle, XCircle, CheckCircle2, ArrowRight, Heart, LogOut, Sparkles, Zap } from 'lucide-react';
+import BurnTransition from '../components/PremiumDice/BurnTransition';
 
 const FALLBACK_P2_AVATAR = "https://api.dicebear.com/7.x/micah/svg?seed=Leo&backgroundColor=e2e8f0";
 
@@ -81,6 +82,8 @@ export default function LocalGame({ socket }) {
   const [isTransitioning, setIsTransitioning] = useState(false); 
   const [card, setCard] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isBurning, setIsBurning] = useState(false);
+  const [pendingBurnAction, setPendingBurnAction] = useState(null);
   
   const [judgmentMode, setJudgmentMode] = useState(false);
   const [refusalDenied, setRefusalDenied] = useState(false);
@@ -278,41 +281,57 @@ export default function LocalGame({ socket }) {
 
   const handlePartnerVerdict = (decision) => {
     const wasBossDare = card && card.type === 'Boss Dare';
-    if (decision === 'success') {
-      if (wasBossDare) {
-        setHeatScore(0);
-      } else {
-        setHeatScore(prev => Math.min(100, prev + 20));
-      }
-      nextTurn();
-    } else if (decision === 'fail') {
-      if (wasBossDare) {
-        setHeatScore(0);
-      } else {
-        setHeatScore(prev => Math.max(0, prev - 10));
-      }
-      setDeniedPenalty(`🔥 DENIED! ${activePlayer.name} MUST STRIP! 🔥`);
-      // Wait 4 seconds for penalty animation, then auto-advance
-      setTimeout(() => {
-        setDeniedPenalty(null);
+    
+    // Trigger the burn animation, and schedule the rest
+    setIsBurning(true);
+    setPendingBurnAction(() => () => {
+      if (decision === 'success') {
+        if (wasBossDare) {
+          setHeatScore(0);
+        } else {
+          setHeatScore(prev => Math.min(100, prev + 20));
+        }
         nextTurn();
-      }, 4000);
-    }
+      } else if (decision === 'fail') {
+        if (wasBossDare) {
+          setHeatScore(0);
+        } else {
+          setHeatScore(prev => Math.max(0, prev - 10));
+        }
+        setDeniedPenalty(`🔥 DENIED! ${activePlayer.name} MUST STRIP! 🔥`);
+        // Wait 4 seconds for penalty animation, then auto-advance
+        setTimeout(() => {
+          setDeniedPenalty(null);
+          nextTurn();
+        }, 4000);
+      }
+    });
   };
 
   const handleRefuse = () => setJudgmentMode(true);  
 
   const handleJudgment = (decision) => {
     setJudgmentMode(false);
+    
     if (decision === 'strip') {
-      setPenaltyMessage(`🔥 ${activePlayer.name} was shown mercy and stripped! 🔥`);
-      setTimeout(() => {
-        setPenaltyMessage('');
-        nextTurn();
-      }, 4000);
+      setIsBurning(true);
+      setPendingBurnAction(() => () => {
+        setPenaltyMessage(`🔥 ${activePlayer.name} was shown mercy and stripped! 🔥`);
+        setTimeout(() => {
+          setPenaltyMessage('');
+          nextTurn();
+        }, 4000);
+      });
     } else {
       setRefusalDenied(true); 
     }
+  };
+
+  const handleRefusalDeniedComplete = () => {
+    setIsBurning(true);
+    setPendingBurnAction(() => () => {
+      nextTurn();
+    });
   };
 
   // Get current heat display info
@@ -347,7 +366,7 @@ export default function LocalGame({ socket }) {
           </p>
           
           <button
-            onClick={() => navigate('/home')}
+            onClick={() => navigate('/home', { replace: true })}
             className="w-full py-4 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl font-black uppercase tracking-widest shadow-[0_0_30px_rgba(249,115,22,0.6)] hover:from-orange-500 hover:to-red-500 transition-all text-sm"
           >
             {cfg.acceptText}
@@ -552,10 +571,18 @@ export default function LocalGame({ socket }) {
       </div>
 
       {/* The Premium Glass Card */}
-      <div className="relative w-72 h-[24rem] cursor-pointer" onClick={handleDrawCard}>
-        <AnimatePresence mode="wait">
+      <div className="relative w-72 h-[24rem] cursor-pointer" onClick={handleDrawCard} style={{ perspective: 1200 }}>
+        <AnimatePresence>
           {!card ? (
-            <motion.div key="back" className={`w-full h-full rounded-[2rem] border border-rose-500/30 backdrop-blur-xl bg-black/40 flex flex-col items-center justify-center shadow-[0_0_50px_rgba(244,63,94,0.15)] hover:scale-105 hover:border-rose-500/60 transition-all duration-300`}>
+            <motion.div 
+              key="back" 
+              initial={{ rotateY: 0 }}
+              animate={{ rotateY: 0 }}
+              exit={{ rotateY: -180 }}
+              transition={{ duration: 0.6, ease: 'easeInOut' }}
+              style={{ backfaceVisibility: 'hidden' }}
+              className={`absolute inset-0 w-full h-full rounded-[2rem] border border-rose-500/30 backdrop-blur-xl bg-black/40 flex flex-col items-center justify-center shadow-[0_0_50px_rgba(244,63,94,0.15)] hover:scale-105 hover:border-rose-500/60 transition-all duration-300`}
+            >
                <div className="absolute inset-0 bg-gradient-to-br from-rose-900/10 to-transparent rounded-[2rem]"></div>
                <Flame className={`w-20 h-20 text-rose-600 mb-6 opacity-90 drop-shadow-[0_0_20px_rgba(244,63,94,1)] ${loading ? 'animate-spin' : 'animate-pulse'}`} />
                <span className="text-rose-200/60 uppercase tracking-[0.4em] text-xs font-black h-4 flex items-center justify-center">
@@ -571,19 +598,40 @@ export default function LocalGame({ socket }) {
                </span>
             </motion.div>
           ) : (
-            <motion.div key="front" className={`w-full h-full rounded-[2rem] border-2 backdrop-blur-2xl flex flex-col items-center justify-center p-8 text-center shadow-[0_0_60px_rgba(244,63,94,0.4)] relative overflow-hidden ${card.type === 'Virtual Dare' ? 'border-rose-500 bg-rose-950/50' : card.type === 'Boss Dare' ? 'border-red-600 bg-red-950/80 shadow-[0_0_80px_rgba(220,38,38,0.6)]' : 'border-pink-400 bg-black/60'}`}>
-              <div className="absolute -top-20 -right-20 w-40 h-40 bg-rose-600/20 blur-[50px] rounded-full pointer-events-none"></div>
-              
-              <div className={`text-[10px] uppercase tracking-[0.3em] font-black mb-6 border px-3 py-1.5 rounded-full z-10 ${card.type === 'Virtual Dare' ? 'text-rose-400 border-rose-400/50 bg-rose-950/50' : card.type === 'Boss Dare' ? 'text-red-500 border-red-500/80 bg-red-900/40 drop-shadow-[0_0_5px_rgba(220,38,38,1)] text-xs' : 'text-pink-300 border-pink-300/50 bg-pink-950/50'}`}>
-                {card.type}
-              </div>
-              <p className={`text-2xl font-serif leading-snug text-white z-10 drop-shadow-md ${card.type === 'Boss Dare' ? 'font-black tracking-wide drop-shadow-[0_0_8px_rgba(220,38,38,0.8)]' : ''}`}>
-                {formatCardText(
-                  card.text, 
-                  activePlayerNum === 1 ? player1.name : player2.name,
-                  activePlayerNum === 1 ? player2.name : player1.name
-                )}
-              </p>
+            <motion.div 
+              key="front" 
+              initial={{ rotateY: 180 }}
+              animate={{ rotateY: 0 }}
+              exit={{ rotateY: 180 }}
+              transition={{ duration: 0.6, ease: 'easeInOut' }}
+              style={{ backfaceVisibility: 'hidden' }}
+              className={`absolute inset-0 w-full h-full rounded-[2rem] border-2 backdrop-blur-2xl shadow-[0_0_60px_rgba(244,63,94,0.4)] overflow-hidden ${card.type === 'Virtual Dare' ? 'border-rose-500 bg-rose-950/50' : card.type === 'Boss Dare' ? 'border-red-600 bg-red-950/80 shadow-[0_0_80px_rgba(220,38,38,0.6)]' : 'border-pink-400 bg-black/60'}`}
+            >
+              <BurnTransition 
+                isBurning={isBurning} 
+                onComplete={() => {
+                  setIsBurning(false);
+                  if (pendingBurnAction) {
+                    pendingBurnAction();
+                    setPendingBurnAction(null);
+                  }
+                }}
+              >
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center w-full h-full">
+                  <div className="absolute -top-20 -right-20 w-40 h-40 bg-rose-600/20 blur-[50px] rounded-full pointer-events-none"></div>
+                  
+                  <div className={`text-[10px] uppercase tracking-[0.3em] font-black mb-6 border px-3 py-1.5 rounded-full z-10 ${card.type === 'Virtual Dare' ? 'text-rose-400 border-rose-400/50 bg-rose-950/50' : card.type === 'Boss Dare' ? 'text-red-500 border-red-500/80 bg-red-900/40 drop-shadow-[0_0_5px_rgba(220,38,38,1)] text-xs' : 'text-pink-300 border-pink-300/50 bg-pink-950/50'}`}>
+                    {card.type}
+                  </div>
+                  <p className={`text-2xl font-serif leading-snug text-white z-10 drop-shadow-md ${card.type === 'Boss Dare' ? 'font-black tracking-wide drop-shadow-[0_0_8px_rgba(220,38,38,0.8)]' : ''}`}>
+                    {formatCardText(
+                      card.text, 
+                      activePlayerNum === 1 ? player1.name : player2.name,
+                      activePlayerNum === 1 ? player2.name : player1.name
+                    )}
+                  </p>
+                </div>
+              </BurnTransition>
             </motion.div>
           )}
         </AnimatePresence>
@@ -626,7 +674,7 @@ export default function LocalGame({ socket }) {
         {/* Refused & Denied (No Mercy) */}
         {refusalDenied && (
           <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
-            <button onClick={nextTurn} className="w-full py-4 bg-rose-900 text-white border-2 border-rose-500 rounded-xl font-black uppercase text-xs tracking-widest shadow-[0_0_30px_rgba(244,63,94,0.6)]">
+            <button onClick={handleRefusalDeniedComplete} className="w-full py-4 bg-rose-900 text-white border-2 border-rose-500 rounded-xl font-black uppercase text-xs tracking-widest shadow-[0_0_30px_rgba(244,63,94,0.6)]">
               Fine. I Completed It.
             </button>
           </motion.div>
@@ -650,7 +698,7 @@ export default function LocalGame({ socket }) {
         )}
       </div>
 
-      <button onClick={() => navigate('/home')} className="absolute -top-2 left-4 text-neutral-500 hover:text-rose-500 flex items-center space-x-1 transition-colors">
+      <button onClick={() => navigate('/home', { replace: true })} className="absolute -top-2 left-4 text-neutral-500 hover:text-rose-500 flex items-center space-x-1 transition-colors">
         <LogOut className="w-4 h-4" /> <span className="text-[9px] uppercase font-black tracking-widest">Quit Game</span>
       </button>
     </div>

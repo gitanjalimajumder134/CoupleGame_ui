@@ -43,6 +43,13 @@ export default function SolitaireCardBoard({ board, onDeckReady, activePopupDice
     return 'url(/card-back-6.png)';
   };
 
+  const getIntensityColor = (slotId) => {
+    const depth = slotId % 6;
+    if (depth >= 4) return 'border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.4)]'; // Wildfire
+    if (depth >= 2) return 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.4)]'; // Flames
+    return 'border-pink-400/30 shadow-[0_0_10px_rgba(236,72,153,0.2)]'; // Sparks
+  };
+
   // 1. Always spread on mount (handles Local mode where the board remounts every turn)
   useEffect(() => {
     setIsStacked(true);
@@ -115,7 +122,7 @@ export default function SolitaireCardBoard({ board, onDeckReady, activePopupDice
                       whileHover={!isDealing && isTopCard ? { y: -10, scale: 1.05, zIndex: 50 } : {}}
                       className={`absolute aspect-[2.5/3.5] w-[58px] sm:w-[84px] rounded-xl border flex flex-col items-center justify-center shadow-[0_15px_30px_rgba(0,0,0,0.8)] transition-colors duration-500 ${
                         !isDealing && isTopCard 
-                          ? 'border-amber-500/30 hover:border-amber-400/60 hover:shadow-[0_0_25px_rgba(251,191,36,0.15)] cursor-pointer' 
+                          ? `cursor-pointer hover:scale-105 hover:z-50 ${getIntensityColor(slot.slotId).replace('/50', '').replace('/30', '')}` 
                           : 'border-white/5 pointer-events-none'
                       }`}
                       style={{
@@ -125,7 +132,7 @@ export default function SolitaireCardBoard({ board, onDeckReady, activePopupDice
                     >
                       <div className="absolute inset-0 rounded-xl bg-cover bg-center pointer-events-none" style={{ backgroundImage: getCardBack(col.diceNumber) }}></div>
                       <div className="absolute inset-0 bg-noise opacity-20 pointer-events-none rounded-xl border border-white/5"></div>
-                      <div className={`absolute inset-[2px] border rounded-lg pointer-events-none ${isTopCard ? 'border-amber-500/20' : 'border-white/5'}`}></div>
+                      <div className={`absolute inset-[2px] border rounded-lg pointer-events-none ${isTopCard ? getIntensityColor(slot.slotId) : 'border-white/5'}`}></div>
                     </motion.div>
                   );
                 })}

@@ -12,7 +12,7 @@ export default function Lobby({ socket }) {
   useEffect(() => {
     if (state?.action === 'create') socket.emit('createRoom');
     socket.on('roomCreated', (code) => setRoomCode(code));
-    socket.on('gameStart', (data) => navigate('/game', { state: { roomCode: data.roomCode, turn: data.turn } }));
+    socket.on('gameStart', (data) => navigate('/game', { replace: true, state: { roomCode: data.roomCode, turn: data.turn } }));
     return () => { socket.off('roomCreated'); socket.off('gameStart'); };
   }, [socket, state, navigate]);
 

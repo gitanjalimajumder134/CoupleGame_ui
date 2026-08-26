@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { PlusCircle, LogIn, Users } from 'lucide-react';
 
 export default function OnlineSetup({ 
-  onCreateRoom, 
+  onHostClick, 
   onJoinRoom, 
   joinCode, 
   setJoinCode, 
@@ -25,7 +25,7 @@ export default function OnlineSetup({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
         {/* CREATE ROOM */}
         <button 
-          onClick={onCreateRoom}
+          onClick={onHostClick}
           className="group bg-[#241018]/80 backdrop-blur-xl border border-[#54152A] rounded-2xl p-8 flex flex-col items-center justify-center hover:border-[#E6C88A]/50 hover:shadow-[0_0_30px_rgba(230,200,138,0.15)] transition-all duration-300"
         >
           <PlusCircle className="w-12 h-12 text-[#E6C88A] mb-4 group-hover:scale-110 transition-transform" />

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchAuthSession, fetchUserAttributes } from 'aws-amplify/auth';
 import {
@@ -40,7 +40,13 @@ const FloatingHearts = () => {
 
 export default function Home({ socket }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const fileInputRef = useRef(null);
+
+  // Clear lobby wizard if user navigates back to Home via browser Back button
+  useEffect(() => {
+    setSelectedGame(null);
+  }, [location.key]);
 
   // App State
   const [userProfile, setUserProfile] = useState(null);
@@ -64,6 +70,12 @@ export default function Home({ socket }) {
   const [secretsLocked, setSecretsLocked] = useState(false);
   const [secretTruth, setSecretTruth] = useState('');
   const [secretDare, setSecretDare] = useState('');
+
+  useEffect(() => {
+    if (lobbyData || secretStashData) {
+      window.scrollTo(0, 0);
+    }
+  }, [lobbyData, secretStashData]);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('ignite_user');
@@ -191,7 +203,7 @@ export default function Home({ socket }) {
       setLobbyData(null);
       setSecretStashData(null);
       setSecretsLocked(false);
-      navigate('/game', { state: { roomCode: data.roomCode, turn: data.turn, players: data.players, category: data.category } });
+      navigate('/game', { replace: true, state: { roomCode: data.roomCode, turn: data.turn, players: data.players, category: data.category } });
     });
 
     // Secret Stash listeners
@@ -208,7 +220,7 @@ export default function Home({ socket }) {
     socket.on('diceInviteReceived', (data) => setDiceInvite(data));
     socket.on('diceGameStart', (data) => {
       setLobbyData(null);
-      navigate('/spicy-dice', { state: { roomCode: data.roomCode, turn: data.turn, players: data.players, board: data.board } });
+      navigate('/spicy-dice', { replace: true, state: { roomCode: data.roomCode, turn: data.turn, players: data.players, board: data.board } });
     });
 
     return () => {
@@ -238,7 +250,7 @@ export default function Home({ socket }) {
     const updatedProfile = { ...userProfile, avatar: newAvatarUrl };
     setUserProfile(updatedProfile);
     localStorage.setItem('ignite_user', JSON.stringify(updatedProfile));
-    await fetch('http://localhost:3001/api/auth/update-avatar', {
+    await fetch('https://6obwt5tc17.execute-api.ap-south-1.amazonaws.com/Prod/api/auth/update-avatar', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: userProfile.email, avatar: newAvatarUrl })
     });
@@ -368,12 +380,12 @@ export default function Home({ socket }) {
 
       {/* --- SECRET STASH MODAL --- */}
       {secretStashData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl">
+        <div className="fixed inset-0 z-[100] flex flex-col p-4 bg-black/95 backdrop-blur-xl overflow-y-auto">
           <motion.div
-            initial={{ opacity: 0, scale: 0.85, y: 30 }}
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ type: 'spring', stiffness: 180, damping: 20 }}
-            className="w-full max-w-sm relative overflow-hidden rounded-[2.5rem] border-2 border-amber-500/60 bg-gradient-to-b from-amber-950/40 via-neutral-950/95 to-purple-950/30 p-8 shadow-[0_0_80px_rgba(251,191,36,0.25)]"
+            className="my-auto mx-auto w-full max-w-sm relative overflow-hidden rounded-[2.5rem] border-2 border-amber-500/60 bg-gradient-to-b from-amber-950/40 via-neutral-950/95 to-purple-950/30 p-8 shadow-[0_0_80px_rgba(251,191,36,0.25)] shrink-0"
           >
             {/* Decorative glow blobs */}
             <div className="absolute -top-24 -right-24 w-56 h-56 bg-amber-500/15 blur-[80px] rounded-full pointer-events-none"></div>
@@ -549,6 +561,7 @@ export default function Home({ socket }) {
                 onlinePlayers={onlinePlayers}
                 myPartners={myPartners}
                 selectedGame={selectedGame}
+                onBack={() => setSelectedGame(null)}
                 onLaunchGame={async (mode, players, categories, items, finalSettings) => {
                     // Map items to match DynamoDB exactly
                     const formattedItems = items.map(i => i === 'none' ? 'GENERAL' : i.charAt(0).toUpperCase() + i.slice(1));
@@ -557,7 +570,7 @@ export default function Home({ socket }) {
                     let progressiveStages = { sparks: [], flames: [], wildfire: [] };
                     
                     try {
-                      const apiUrl = import.meta.env.VITE_FILTER_API_URL || 'https://YOUR_API_GATEWAY_URL.execute-api.REGION.amazonaws.com/Prod/questions/filter';
+                      const apiUrl = 'https://6obwt5tc17.execute-api.ap-south-1.amazonaws.com/Prod/api/deck';
                       
                       const localUserStr = localStorage.getItem('ignite_user');
                       let usedQuestionIds = [];
@@ -591,6 +604,7 @@ export default function Home({ socket }) {
                   if (mode === 'local') {
                     const targetRoute = selectedGame === 'dice' ? '/local-spicy-dice' : selectedGame === 'ludo' ? '/local-naughty-ludo' : '/local-game';
                     navigate(targetRoute, {
+                      replace: true,
                       state: {
                         moods: categories,
                         items: items,

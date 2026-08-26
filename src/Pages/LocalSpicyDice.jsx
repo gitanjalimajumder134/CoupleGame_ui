@@ -62,6 +62,7 @@ export default function LocalSpicyDice({ socket }) {
   const [boardExhausted, setBoardExhausted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showCardPopup, setShowCardPopup] = useState(false);
+  const [localDeck, setLocalDeck] = useState(state?.preloadedQuestions || { sparks: [], flames: [], wildfire: [] });
 
   const activePlayer = activePlayerNum === 1 ? player1 : player2;
   const inactivePlayer = activePlayerNum === 1 ? player2 : player1;
@@ -110,9 +111,31 @@ export default function LocalSpicyDice({ socket }) {
     const slot = board.find(s => s.slotId === slotId);
     if (!slot || slot.consumed || slot.diceNumber !== diceResult) return;
 
-    setRevealedSlotId(slotId);
-    setLoading(true);
-    socket.emit('drawLocalDiceCard', { diceNumber: slot.diceNumber });
+    const depth = board.filter(s => s.diceNumber === diceResult && s.consumed).length;
+
+    let targetCategory = 'sparks';
+    if (depth >= 4) targetCategory = 'wildfire';
+    else if (depth >= 2) targetCategory = 'flames';
+
+    const stageDeck = localDeck[targetCategory];
+    if (stageDeck && stageDeck.length > 0) {
+      setRevealedSlotId(slotId);
+      const randomIndex = Math.floor(Math.random() * stageDeck.length);
+      const drawnCard = stageDeck[randomIndex];
+      const task = { id: drawnCard.id, type: drawnCard.category, text: drawnCard.question, intensity: targetCategory };
+      
+      const newDeck = { ...localDeck };
+      newDeck[targetCategory] = stageDeck.filter((_, i) => i !== randomIndex);
+      setLocalDeck(newDeck);
+
+      setRevealedTask(task);
+      if (task?.id) recordUsedQuestion(task.id);
+      setBoard(prev => prev.map(s => s.slotId === slotId ? { ...s, revealed: true, task } : s));
+    } else {
+      setRevealedSlotId(slotId);
+      setLoading(true);
+      socket.emit('drawLocalDiceCard', { diceNumber: slot.diceNumber, depth });
+    }
   };
 
   const nextTurn = () => {
@@ -176,7 +199,7 @@ export default function LocalSpicyDice({ socket }) {
             <button onClick={handleNewRound} className="w-full py-4 bg-gradient-to-r from-amber-700 to-rose-700 text-white rounded-xl font-black uppercase tracking-widest hover:from-amber-600 hover:to-rose-600 transition-all text-sm" style={{ boxShadow: '0 0 30px rgba(251,191,36,0.2)' }}>
               🎲 New Round
             </button>
-            <button onClick={() => navigate('/home')} className="w-full py-3 bg-neutral-950 text-purple-400 border border-purple-900 rounded-xl font-black uppercase tracking-widest hover:bg-purple-950/30 transition-all text-xs">
+            <button onClick={() => navigate('/home', { replace: true })} className="w-full py-3 bg-neutral-950 text-purple-400 border border-purple-900 rounded-xl font-black uppercase tracking-widest hover:bg-purple-950/30 transition-all text-xs">
               Back to Home
             </button>
           </div>
@@ -286,9 +309,10 @@ export default function LocalSpicyDice({ socket }) {
         </AnimatePresence>
       </LayoutGroup>
 
-      {/* <button onClick={() => navigate('/home')} className="absolute top-6 left-4 text-neutral-500 hover:text-amber-400 flex items-center space-x-1 transition-colors z-50">
+      <button onClick={() => navigate('/home', { replace: true })}
+        className="absolute top-6 left-4 text-neutral-500 hover:text-amber-400 flex items-center space-x-1 transition-colors z-50">
         <LogOut className="w-4 h-4" /> <span className="text-[9px] uppercase font-black tracking-widest">Quit</span>
-      </button> */}
+      </button>
     </div>
   );
 }

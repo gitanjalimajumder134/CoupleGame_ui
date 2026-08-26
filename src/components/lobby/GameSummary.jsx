@@ -10,6 +10,7 @@ const RELATIONSHIP_MAP = {
 
 export default function GameSummary({
   gameMode,
+  selectedGame,
   players,
   relationship,
   categories,
@@ -63,30 +64,34 @@ export default function GameSummary({
           </div>
         )}
 
-        {renderSection("Relationship", 1, 
-          <span className="mt-1 block text-sm">{RELATIONSHIP_MAP[relationship] || 'Not selected'}</span>
-        )}
+        {selectedGame !== 'dice' && (
+          <>
+            {renderSection("Relationship", 1, 
+              <span className="mt-1 block text-sm">{RELATIONSHIP_MAP[relationship] || 'Not selected'}</span>
+            )}
 
-        {renderSection("Mood", 2, 
-           categories.length > 0
-             ? categories.map(c => c.charAt(0).toUpperCase() + c.slice(1)).join(' · ')
-             : <span className="text-white/30 italic">None selected</span>
-        )}
+            {renderSection("Mood", 2, 
+               categories.length > 0
+                 ? categories.map(c => c.charAt(0).toUpperCase() + c.slice(1)).join(' · ')
+                 : <span className="text-white/30 italic">None selected</span>
+            )}
 
-        {renderSection("Available Items", 2, 
-           items.length > 0
-             ? items.map(i => i === 'none' ? '🚫 No Objects' : i.charAt(0).toUpperCase() + i.slice(1)).join(' · ')
-             : <span className="text-white/30 italic">None selected</span>
-        )}
+            {renderSection("Available Items", 2, 
+               items.length > 0
+                 ? items.map(i => i === 'none' ? '🚫 No Objects' : i.charAt(0).toUpperCase() + i.slice(1)).join(' · ')
+                 : <span className="text-white/30 italic">None selected</span>
+            )}
 
-        {renderSection("Intimacy Progression", 2,
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider">
-             <span className="text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded">✨ Sparks</span>
-             <span className="text-white/30">→</span>
-             <span className="text-orange-500 bg-orange-500/10 px-2 py-1 rounded">🔥 Flames</span>
-             <span className="text-white/30">→</span>
-             <span className="text-red-500 bg-red-500/10 px-2 py-1 rounded">🌋 Wildfire</span>
-          </div>
+            {renderSection("Intimacy Progression", 2,
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider">
+                 <span className="text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded">✨ Sparks</span>
+                 <span className="text-white/30">→</span>
+                 <span className="text-orange-500 bg-orange-500/10 px-2 py-1 rounded">🔥 Flames</span>
+                 <span className="text-white/30">→</span>
+                 <span className="text-red-500 bg-red-500/10 px-2 py-1 rounded">🌋 Wildfire</span>
+              </div>
+            )}
+          </>
         )}
 
         {renderSection("Game Setup", 2, 

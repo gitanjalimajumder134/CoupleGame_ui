@@ -53,11 +53,11 @@ export default function OnlineLobby({
   const formatItems = () => items.filter(i => i !== 'none').map(i => i.charAt(0).toUpperCase() + i.slice(1)).join(', ') || 'No Items';
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex flex-col p-4 bg-black/90 backdrop-blur-md overflow-y-auto">
       <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-neutral-950/90 border border-[#54152A] rounded-[2rem] p-8 w-full max-w-md shadow-[0_0_60px_rgba(84,21,42,0.4)] text-center relative overflow-hidden"
+        className="my-auto mx-auto bg-neutral-950/90 border border-[#54152A] rounded-[2rem] p-8 w-full max-w-md shadow-[0_0_60px_rgba(84,21,42,0.4)] text-center relative overflow-hidden shrink-0"
       >
         {/* Glow Effects */}
         <div className="absolute -top-20 -right-20 w-40 h-40 bg-rose-500/10 blur-[50px] rounded-full pointer-events-none"></div>

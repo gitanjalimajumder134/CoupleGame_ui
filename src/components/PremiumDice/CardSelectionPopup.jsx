@@ -107,15 +107,16 @@ export default function CardSelectionPopup({
           const xPos = offset * 45;
           const yPos = Math.abs(offset) * 8;
 
-          // ── VARIANTS: Shared by both selected and non-selected cards to maintain layout stability ──
+          // ── VARIANTS: Handled dynamically for selected vs non-selected ──
           const cardVariants = {
             hidden: { y: 0, x: 0, rotate: 0, opacity: 0, scale: 0.8 },
             show: { 
-              y: yPos,
-              x: xPos, 
-              rotate: rotation, 
+              y: isSelected ? -150 : yPos,
+              x: isSelected ? 0 : xPos, 
+              rotate: isSelected ? 0 : rotation, 
               opacity: isRevealing && !isSelected ? 0.25 : 1,
-              scale: isRevealing && !isSelected ? 0.9 : 1,
+              scale: isSelected ? 1.45 : (isRevealing && !isSelected ? 0.9 : 1),
+              zIndex: isSelected ? 50 : (isConsumed ? 0 : index + 10),
               transition: { type: 'spring', damping: 25, stiffness: 100 }
             }
           };
@@ -127,28 +128,10 @@ export default function CardSelectionPopup({
                 key={slot.slotId}
                 layoutId={`card-${slot.slotId}`}
                 variants={cardVariants}
-                className="absolute z-50"
-                style={{ zIndex: 50, transformOrigin: 'bottom center' }}
+                className="absolute aspect-[2/3.2] w-28 sm:w-36"
+                style={{ transformOrigin: 'center center', perspective: 1500 }}
               >
-                {/* Lift and Scale Wrapper — separates explicit position animation from layoutId */}
-                <motion.div
-                  initial={{ y: 0, x: 0, rotate: 0, scale: 1 }}
-                  animate={{
-                    y: -200 - yPos,
-                    x: -xPos,
-                    rotate: -rotation,
-                    scale: 1.45,
-                  }}
-                  transition={{
-                    type: 'spring',
-                    stiffness: 60,
-                    damping: 14,
-                    mass: 1,
-                  }}
-                  className="aspect-[2/3.2] w-28 sm:w-36"
-                  style={{ perspective: 1500, transformOrigin: 'center center' }}
-                >
-                  {/* Inner 3D flip — flips immediately while rising, no delay */}
+                {/* Inner 3D flip — flips immediately while rising, no delay */}
                   <motion.div
                     initial={{ rotateX: 0 }}
                     animate={{ rotateX: -180 }}
@@ -197,7 +180,6 @@ export default function CardSelectionPopup({
                       )}
                     </div>
                   </motion.div>
-                </motion.div>
               </motion.div>
             );
           }

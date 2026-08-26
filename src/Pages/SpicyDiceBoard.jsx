@@ -160,7 +160,7 @@ export default function SpicyDiceBoard({ socket }) {
               🎲 New Round
             </button>
             <button
-              onClick={() => { socket.emit('quitGame', state?.roomCode); navigate('/home'); }}
+              onClick={() => { socket.emit('quitGame', state?.roomCode); navigate('/home', { replace: true }); }}
               className="w-full py-3 bg-neutral-950 text-purple-400 border border-purple-900 rounded-xl font-black uppercase tracking-widest hover:bg-purple-950/30 transition-all text-xs"
             >
               Back to Home
@@ -184,7 +184,7 @@ export default function SpicyDiceBoard({ socket }) {
               <Heart className="w-14 h-14 text-purple-500 mx-auto mb-4 opacity-60" />
               <h2 className="text-xl font-serif text-white font-black mb-2 tracking-widest uppercase">Game Over</h2>
               <p className="text-purple-300 text-sm mb-6 font-bold">{partnerLeftMsg}</p>
-              <button onClick={() => { setPartnerLeftMsg(null); navigate('/home'); }}
+              <button onClick={() => { setPartnerLeftMsg(null); navigate('/home', { replace: true }); }}
                 className="w-full py-3.5 bg-purple-600 text-white rounded-xl font-black uppercase tracking-widest hover:bg-purple-500 shadow-[0_0_20px_rgba(139,92,246,0.4)] transition-all text-xs">
                 Back to Home
               </button>
@@ -305,10 +305,11 @@ export default function SpicyDiceBoard({ socket }) {
       </AnimatePresence>
 
       {/* --- QUIT BUTTON --- */}
-      {/* <button onClick={() => { socket.emit('quitGame', state?.roomCode); navigate('/home'); }}
+      {/* --- QUIT BUTTON --- */}
+      <button onClick={() => { socket.emit('quitGame', state?.roomCode); navigate('/home', { replace: true }); }}
         className="absolute top-6 left-4 text-neutral-500 hover:text-amber-400 flex items-center space-x-1 transition-colors z-50">
         <LogOut className="w-4 h-4" /> <span className="text-[9px] uppercase font-black tracking-widest">Quit</span>
-      </button> */}
+      </button>
     </div>
   );
 }

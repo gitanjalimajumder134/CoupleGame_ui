@@ -112,7 +112,7 @@ export default function LocalNaughtyLudo({ socket }) {
 
   useEffect(() => {
     if (!location.state || !location.state.player1 || !location.state.player2) {
-      navigate('/home');
+      navigate('/home', { replace: true });
       return;
     }
     
@@ -275,7 +275,7 @@ export default function LocalNaughtyLudo({ socket }) {
   return (
     <div className="flex flex-col items-center w-full min-h-[100dvh] space-y-1 sm:space-y-2 relative pt-1 sm:pt-2 px-1 overflow-y-auto overflow-x-hidden bg-black/60 backdrop-blur-3xl rounded-none pb-2">
       <div className="w-full max-w-2xl flex justify-between items-center z-20 px-2 shrink-0">
-        <button onClick={() => navigate('/home')} className="p-2 bg-neutral-900/50 rounded-full text-neutral-400 hover:text-white transition-colors">
+        <button onClick={() => navigate('/home', { replace: true })} className="p-2 bg-neutral-900/50 rounded-full text-neutral-400 hover:text-white transition-colors">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h1 className="text-lg sm:text-xl font-black text-white uppercase tracking-widest drop-shadow-[0_0_10px_rgba(244,63,94,0.5)]">Naughty Ludo</h1>

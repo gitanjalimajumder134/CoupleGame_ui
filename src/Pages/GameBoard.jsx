@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flame, AlertTriangle, XCircle, CheckCircle2, Heart, LogOut, Sparkles, Zap } from 'lucide-react';
 import { formatCardText } from '../utils/text';
+import BurnTransition from '../components/PremiumDice/BurnTransition';
 
 const FALLBACK_AVATAR = "https://api.dicebear.com/7.x/lorelei/svg?seed=fallback";
 
@@ -58,6 +59,8 @@ export default function GameBoard({ socket }) {
   const [deniedPenalty, setDeniedPenalty] = useState(null);
   const [heatScore, setHeatScore] = useState(0);
   const [isPulsing, setIsPulsing] = useState(false);
+  const [isBurning, setIsBurning] = useState(false);
+  const [pendingBurnAction, setPendingBurnAction] = useState(null);
 
   // --- ESCALATION STATE ---
   const [currentHeatLevel, setCurrentHeatLevel] = useState(state?.category || 'sparks');
@@ -155,7 +158,24 @@ export default function GameBoard({ socket }) {
   const handleDeckClick = () => { if (isMyTurn && !card) socket.emit('drawCard', state?.roomCode); };
 
   const handlePartnerVerdict = (decision) => {
-    socket.emit('partnerVerdict', { roomCode: state.roomCode, decision });
+    setIsBurning(true);
+    setPendingBurnAction(() => () => {
+      socket.emit('partnerVerdict', { roomCode: state.roomCode, decision });
+    });
+  };
+
+  const handleFineIDidIt = () => {
+    setIsBurning(true);
+    setPendingBurnAction(() => () => {
+      socket.emit('nextTurn', state.roomCode);
+    });
+  };
+
+  const handleResolveRefusal = (decision) => {
+    setIsBurning(true);
+    setPendingBurnAction(() => () => {
+      socket.emit('resolveRefusal', { roomCode: state.roomCode, decision });
+    });
   };
 
   const handleEscalationAccept = () => {
@@ -191,7 +211,7 @@ export default function GameBoard({ socket }) {
           </p>
 
           <button
-            onClick={() => { socket.emit('quitGame', state?.roomCode); navigate('/home'); }}
+            onClick={() => { socket.emit('quitGame', state?.roomCode); navigate('/home', { replace: true }); }}
             className="w-full py-4 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl font-black uppercase tracking-widest hover:from-orange-500 hover:to-red-500 transition-all text-sm"
             style={{ boxShadow: `0 0 30px ${cfg.glowColor}` }}
           >
@@ -307,7 +327,7 @@ export default function GameBoard({ socket }) {
               <h2 className="text-xl font-serif text-white font-black mb-2 tracking-widest uppercase">Game Over</h2>
               <p className="text-rose-300 text-sm mb-6 font-bold">{partnerLeftMsg}</p>
               <button
-                onClick={() => { setPartnerLeftMsg(null); navigate('/home'); }}
+                onClick={() => { setPartnerLeftMsg(null); navigate('/home', { replace: true }); }}
                 className="w-full py-3.5 bg-rose-600 text-white rounded-xl font-black uppercase tracking-widest hover:bg-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.4)] transition-all text-xs"
               >
                 Back to Home
@@ -414,10 +434,18 @@ export default function GameBoard({ socket }) {
       </div>
 
       {/* The Premium Glass Card */}
-      <div className="relative w-72 h-[24rem] cursor-pointer" onClick={handleDeckClick}>
-        <AnimatePresence mode="wait">
+      <div className="relative w-72 h-[24rem] cursor-pointer" onClick={handleDeckClick} style={{ perspective: 1200 }}>
+        <AnimatePresence>
           {!card ? (
-            <motion.div key="back" className={`w-full h-full rounded-[2rem] border border-rose-500/30 backdrop-blur-xl bg-black/40 flex flex-col items-center justify-center shadow-[0_0_50px_rgba(244,63,94,0.15)] ${isMyTurn ? 'hover:scale-105 hover:border-rose-500/60' : 'opacity-60'} transition-all duration-300`}>
+            <motion.div 
+              key="back" 
+              initial={{ rotateY: 0 }}
+              animate={{ rotateY: 0 }}
+              exit={{ rotateY: -180 }}
+              transition={{ duration: 0.6, ease: 'easeInOut' }}
+              style={{ backfaceVisibility: 'hidden' }}
+              className={`absolute inset-0 w-full h-full rounded-[2rem] border border-rose-500/30 backdrop-blur-xl bg-black/40 flex flex-col items-center justify-center shadow-[0_0_50px_rgba(244,63,94,0.15)] ${isMyTurn ? 'hover:scale-105 hover:border-rose-500/60' : 'opacity-60'} transition-all duration-300`}
+            >
                <div className="absolute inset-0 bg-gradient-to-br from-rose-900/10 to-transparent rounded-[2rem]"></div>
                <Flame className="w-20 h-20 text-rose-600 mb-6 opacity-90 drop-shadow-[0_0_20px_rgba(244,63,94,1)]" />
                <span className="text-rose-200/60 uppercase tracking-[0.4em] text-xs font-black">
@@ -428,79 +456,113 @@ export default function GameBoard({ socket }) {
             /* --- SECRET STASH CARD (Ultra-Premium Gold/Purple) --- */
             <motion.div
               key="front-secret"
-              initial={{ rotateY: 90, scale: 0.8, opacity: 0 }}
-              animate={{ rotateY: 0, scale: 1, opacity: 1 }}
-              exit={{ rotateY: -90, scale: 0.8, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 120, damping: 14, duration: 0.8 }}
-              style={{ perspective: 1200, transformStyle: 'preserve-3d' }}
-              className="w-full h-full rounded-[2rem] border-2 border-amber-400 backdrop-blur-2xl flex flex-col items-center justify-center p-8 text-center relative overflow-hidden bg-gradient-to-b from-amber-950/60 via-purple-950/40 to-black/80"
+              initial={{ rotateY: 180 }}
+              animate={{ rotateY: 0 }}
+              exit={{ rotateY: 180 }}
+              transition={{ duration: 0.6, ease: 'easeInOut' }}
+              style={{ backfaceVisibility: 'hidden' }}
+              className={`absolute inset-0 w-full h-full rounded-[2rem] border-2 border-amber-400 shadow-[0_0_60px_rgba(251,191,36,0.3)] overflow-hidden ${isBurning ? 'card-burning' : ''}`}
             >
-              {/* Animated shimmer overlay */}
-              <motion.div
-                className="absolute inset-0 pointer-events-none rounded-[2rem]"
-                style={{
-                  background: 'linear-gradient(105deg, transparent 40%, rgba(251,191,36,0.12) 45%, rgba(168,85,247,0.08) 55%, transparent 60%)',
-                  backgroundSize: '200% 100%'
+              <BurnTransition 
+                isBurning={isBurning} 
+                onComplete={() => {
+                  setIsBurning(false);
+                  if (pendingBurnAction) {
+                    pendingBurnAction();
+                    setPendingBurnAction(null);
+                  }
                 }}
-                animate={{ backgroundPosition: ['200% 0%', '-200% 0%'] }}
-                transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
-              />
-
-              {/* Decorative glow blobs */}
-              <div className="absolute -top-20 -right-20 w-48 h-48 bg-amber-500/20 blur-[60px] rounded-full pointer-events-none"></div>
-              <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-purple-600/20 blur-[60px] rounded-full pointer-events-none"></div>
-
-              {/* Type badge */}
-              <div className="text-[10px] uppercase tracking-[0.3em] font-black mb-4 border px-3 py-1.5 rounded-full z-10 text-amber-300 border-amber-400/50 bg-amber-950/50">
-                {card.type}
-              </div>
-
-              {/* Card text */}
-              <p className="text-2xl font-serif leading-snug text-white z-10 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]">
-                {formatCardText(
-                  card.text,
-                  isMyTurn ? myData.username : partnerData.username,
-                  isMyTurn ? partnerData.username : myData.username
-                )}
-              </p>
-
-              {/* Secret Stash author tag */}
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.5, duration: 0.4 }}
-                className="absolute bottom-5 left-0 right-0 flex justify-center z-10"
               >
-                <div className="bg-gradient-to-r from-amber-600/30 to-purple-600/30 border border-amber-500/40 backdrop-blur-md px-4 py-1.5 rounded-full">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-300 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)]">
-                    🤫 Secret Stash: Written by {card.author}
-                  </span>
+                <div className="absolute inset-0 w-full h-full bg-gradient-to-b from-amber-950 via-purple-950 to-[#050505] flex flex-col items-center justify-center p-8 text-center">
+                  {/* Animated shimmer overlay */}
+                  <motion.div
+                    className="absolute inset-0 pointer-events-none rounded-[2rem]"
+                    style={{
+                      background: 'linear-gradient(105deg, transparent 40%, rgba(251,191,36,0.12) 45%, rgba(168,85,247,0.08) 55%, transparent 60%)',
+                      backgroundSize: '200% 100%'
+                    }}
+                    animate={{ backgroundPosition: ['200% 0%', '-200% 0%'] }}
+                    transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
+                  />
+    
+                  {/* Decorative glow blobs */}
+                  <div className="absolute -top-20 -right-20 w-48 h-48 bg-amber-500/20 blur-[60px] rounded-full pointer-events-none"></div>
+                  <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-purple-600/20 blur-[60px] rounded-full pointer-events-none"></div>
+    
+                  {/* Type badge */}
+                  <div className="text-[10px] uppercase tracking-[0.3em] font-black mb-4 border px-3 py-1.5 rounded-full z-10 text-amber-300 border-amber-400/50 bg-amber-950/50">
+                    {card.type}
+                  </div>
+    
+                  {/* Card text */}
+                  <p className="text-2xl font-serif leading-snug text-white z-10 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]">
+                    {formatCardText(
+                      card.text,
+                      isMyTurn ? myData.username : partnerData.username,
+                      isMyTurn ? partnerData.username : myData.username
+                    )}
+                  </p>
+    
+                  {/* Secret Stash author tag */}
+                  <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.5, duration: 0.4 }}
+                    className="absolute bottom-5 left-0 right-0 flex justify-center z-10"
+                  >
+                    <div className="bg-gradient-to-r from-amber-600/30 to-purple-600/30 border border-amber-500/40 backdrop-blur-md px-4 py-1.5 rounded-full">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-amber-300 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)]">
+                        🤫 Secret Stash: Written by {card.author}
+                      </span>
+                    </div>
+                  </motion.div>
+    
+                  {/* Gold glow ring pulse */}
+                  <motion.div
+                    className="absolute inset-0 rounded-[2rem] pointer-events-none"
+                    style={{ boxShadow: 'inset 0 0 60px rgba(251,191,36,0.05)' }}
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+                  />
                 </div>
-              </motion.div>
-
-              {/* Gold glow ring pulse */}
-              <motion.div
-                className="absolute inset-0 rounded-[2rem] pointer-events-none"
-                style={{ boxShadow: '0 0 60px rgba(251,191,36,0.3), inset 0 0 60px rgba(251,191,36,0.05)' }}
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-              />
+              </BurnTransition>
             </motion.div>
           ) : (
             /* --- NORMAL CARD (existing styling) --- */
-            <motion.div key="front" className={`w-full h-full rounded-[2rem] border-2 backdrop-blur-2xl flex flex-col items-center justify-center p-8 text-center shadow-[0_0_60px_rgba(244,63,94,0.4)] relative overflow-hidden ${card.type === 'Virtual Dare' ? 'border-rose-500 bg-rose-950/50' : card.type === 'Boss Dare' ? 'border-red-600 bg-red-950/80 shadow-[0_0_80px_rgba(220,38,38,0.6)]' : 'border-pink-400 bg-black/60'}`}>
-              <div className="absolute -top-20 -right-20 w-40 h-40 bg-rose-600/20 blur-[50px] rounded-full pointer-events-none"></div>
-              
-              <div className={`text-[10px] uppercase tracking-[0.3em] font-black mb-6 border px-3 py-1.5 rounded-full z-10 ${card.type === 'Virtual Dare' ? 'text-rose-400 border-rose-400/50 bg-rose-950/50' : card.type === 'Boss Dare' ? 'text-red-500 border-red-500/80 bg-red-900/40 drop-shadow-[0_0_5px_rgba(220,38,38,1)] text-xs' : 'text-pink-300 border-pink-300/50 bg-pink-950/50'}`}>
-                {card.type}
-              </div>
-              <p className={`text-2xl font-serif leading-snug text-white z-10 drop-shadow-md ${card.type === 'Boss Dare' ? 'font-black tracking-wide drop-shadow-[0_0_8px_rgba(220,38,38,0.8)]' : ''}`}>
-                {formatCardText(
-                  card.text,
-                  isMyTurn ? myData.username : partnerData.username,
-                  isMyTurn ? partnerData.username : myData.username
-                )}
-              </p>
+            <motion.div 
+              key="front" 
+              initial={{ rotateY: 180 }}
+              animate={{ rotateY: 0 }}
+              exit={{ rotateY: 180 }}
+              transition={{ duration: 0.6, ease: 'easeInOut' }}
+              style={{ backfaceVisibility: 'hidden' }}
+              className={`absolute inset-0 w-full h-full rounded-[2rem] border-2 shadow-[0_0_60px_rgba(244,63,94,0.4)] overflow-hidden ${card.type === 'Virtual Dare' ? 'border-rose-500' : card.type === 'Boss Dare' ? 'border-red-600 shadow-[0_0_80px_rgba(220,38,38,0.6)]' : 'border-pink-400'} ${isBurning ? 'card-burning' : ''}`}
+            >
+              <BurnTransition 
+                isBurning={isBurning} 
+                onComplete={() => {
+                  setIsBurning(false);
+                  if (pendingBurnAction) {
+                    pendingBurnAction();
+                    setPendingBurnAction(null);
+                  }
+                }}
+              >
+                <div className={`absolute inset-0 w-full h-full flex flex-col items-center justify-center p-8 text-center ${card.type === 'Virtual Dare' ? 'bg-rose-950' : card.type === 'Boss Dare' ? 'bg-red-950' : 'bg-[#0a0a0a]'}`}>
+                  <div className="absolute -top-20 -right-20 w-40 h-40 bg-rose-600/20 blur-[50px] rounded-full pointer-events-none"></div>
+                  
+                  <div className={`text-[10px] uppercase tracking-[0.3em] font-black mb-6 border px-3 py-1.5 rounded-full z-10 ${card.type === 'Virtual Dare' ? 'text-rose-400 border-rose-400/50 bg-rose-950/50' : card.type === 'Boss Dare' ? 'text-red-500 border-red-500/80 bg-red-900/40 drop-shadow-[0_0_5px_rgba(220,38,38,1)] text-xs' : 'text-pink-300 border-pink-300/50 bg-pink-950/50'}`}>
+                    {card.type}
+                  </div>
+                  <p className={`text-2xl font-serif leading-snug text-white z-10 drop-shadow-md ${card.type === 'Boss Dare' ? 'font-black tracking-wide drop-shadow-[0_0_8px_rgba(220,38,38,0.8)]' : ''}`}>
+                    {formatCardText(
+                      card.text,
+                      isMyTurn ? myData.username : partnerData.username,
+                      isMyTurn ? partnerData.username : myData.username
+                    )}
+                  </p>
+                </div>
+              </BurnTransition>
             </motion.div>
           )}
         </AnimatePresence>
@@ -543,7 +605,7 @@ export default function GameBoard({ socket }) {
 
         {isMyTurn && refusalStatus === 'denied' && (
           <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
-            <button onClick={() => socket.emit('nextTurn', state.roomCode)} className="w-full py-4 bg-rose-900 text-white border-2 border-rose-500 rounded-xl font-black uppercase text-xs tracking-widest shadow-[0_0_30px_rgba(244,63,94,0.6)]">
+            <button onClick={handleFineIDidIt} className="w-full py-4 bg-rose-900 text-white border-2 border-rose-500 rounded-xl font-black uppercase text-xs tracking-widest shadow-[0_0_30px_rgba(244,63,94,0.6)]">
               Fine. I Did It.
             </button>
           </motion.div>
@@ -555,10 +617,10 @@ export default function GameBoard({ socket }) {
               {partnerData.username} wants to skip!
             </p>
             <div className="flex space-x-2">
-              <button onClick={() => socket.emit('resolveRefusal', { roomCode: state.roomCode, decision: 'strip' })} className="flex-1 py-2 bg-neutral-950 border border-rose-500 text-rose-400 rounded-lg font-black flex items-center justify-center space-x-1 hover:bg-rose-900 transition-colors">
+              <button onClick={() => handleResolveRefusal('strip')} className="flex-1 py-2 bg-neutral-950 border border-rose-500 text-rose-400 rounded-lg font-black flex items-center justify-center space-x-1 hover:bg-rose-900 transition-colors">
                 <CheckCircle2 className="w-3 h-3" /> <span className="text-[10px] uppercase tracking-wider">Mercy</span>
               </button>
-              <button onClick={() => socket.emit('resolveRefusal', { roomCode: state.roomCode, decision: 'force' })} className="flex-1 py-2 bg-rose-600 text-white rounded-lg font-black flex items-center justify-center space-x-1 shadow-lg hover:bg-rose-500 transition-colors">
+              <button onClick={() => handleResolveRefusal('force')} className="flex-1 py-2 bg-rose-600 text-white rounded-lg font-black flex items-center justify-center space-x-1 shadow-lg hover:bg-rose-500 transition-colors">
                 <XCircle className="w-3 h-3" /> <span className="text-[10px] uppercase tracking-wider">No Mercy</span>
               </button>
             </div>
@@ -567,7 +629,7 @@ export default function GameBoard({ socket }) {
 
       </div>
 
-      <button onClick={() => { socket.emit('quitGame', state?.roomCode); navigate('/home'); }} className="absolute -top-2 left-4 text-neutral-500 hover:text-rose-500 flex items-center space-x-1 transition-colors">
+      <button onClick={() => { socket.emit('quitGame', state?.roomCode); navigate('/home', { replace: true }); }} className="absolute -top-2 left-4 text-neutral-500 hover:text-rose-500 flex items-center space-x-1 transition-colors">
         <LogOut className="w-4 h-4" /> <span className="text-[9px] uppercase font-black tracking-widest">Quit</span>
       </button>
     </div>

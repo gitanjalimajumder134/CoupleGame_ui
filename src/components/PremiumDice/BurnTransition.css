@@ -1,0 +1,95 @@
+.burn-container {
+  border-radius: inherit;
+  z-index: 10;
+}
+
+/* The 770x430 mask wrapper, scaled up to cover portrait cards */
+.mask-wrapper {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 770px;
+  height: 430px;
+  transform: translate(-50%, -50%) scale(1.6);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.mask-wrapper > div {
+  position: absolute;
+  width: 770px;
+  height: 430px;
+  background-size: auto 100%;
+  background-position: 0 0;
+}
+
+.layer-original {
+  pointer-events: auto;
+  z-index: 2;
+  /* mix-blend-mode is applied dynamically via inline style only when burning */
+}
+
+.layer-burn {
+  background-image: url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/217233/burnStrip.jpg');
+}
+
+.layer-burnline {
+  mix-blend-mode: lighten;
+  background-image: url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/217233/burnlineStrip.jpg');
+}
+
+.layer-ash {
+  mix-blend-mode: screen;
+  background-image: url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/217233/ashInnerStrip.jpg');
+}
+
+.layer-ash-outer {
+  mix-blend-mode: difference;
+  background-image: url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/217233/ashOuterStrip.jpg');
+}
+
+
+/* --- THE ANIMATION TRIGGERS --- */
+
+/* 
+  Since the mask layers are conditionally rendered only when isBurning,
+  the animations start immediately on mount.
+*/
+.is-burning .layer-burn,
+.is-burning .layer-burnline {
+  animation: sprite-burn 1.3s forwards steps(50, end);
+}
+
+.is-burning .layer-ash,
+.is-burning .layer-ash-outer {
+  animation: sprite-ash 2s infinite steps(66, end);
+}
+
+@keyframes sprite-burn {
+  0% {
+      background-position: 0 0;
+  }
+  100% {
+      background-position: -38145px 0;
+  }
+}
+
+@keyframes sprite-ash {
+  0% {
+      background-position: 0 0;
+  }
+  100% {
+      background-position: -50190px 0;
+  }
+}
+
+/* --- BORDER FADE for parent card --- */
+/* 
+  Applied to the parent motion.div in GameBoard via the .card-burning class.
+  Fades border and shadow to transparent so it doesn't stick around during burn.
+*/
+.card-burning {
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transition: border-color 0.4s ease-out, box-shadow 0.4s ease-out;
+}

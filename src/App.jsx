@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { io } from 'socket.io-client';
+import { socket } from './socket';
 
 // Make sure these 4 imports are here!
 import Auth from './Pages/Auth'; 
@@ -16,8 +16,6 @@ import './index.css';
 
 // Your background image import
 import coupleBg from './assets/couple.jpg';
-
-const socket = io('http://localhost:3001');
 
 export default function App() {
   return (
