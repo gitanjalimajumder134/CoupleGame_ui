@@ -2,10 +2,11 @@ import React from 'react';
 import { Heart, ArrowLeft } from 'lucide-react';
 
 const RELATIONSHIP_MAP = {
-  couple: '❤️ Couple',
-  spouse: '💍 Spouse',
-  crush: '💘 Crush',
-  new_date: '✨ New Date',
+  couple: 'Girlfriend / Boyfriend',
+  spouse: 'Husband / Wife',
+  crush: 'Just Talking / Crush',
+  new_date: 'First few dates',
+  long_distance: 'Long Distance',
 };
 
 export default function GameSummary({

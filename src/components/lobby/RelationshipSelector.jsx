@@ -6,6 +6,7 @@ const RELATIONSHIPS = [
   { id: 'spouse', title: 'Spouse', emoji: '💍' },
   { id: 'crush', title: 'Crush', emoji: '💘' },
   { id: 'new_date', title: 'New Date', emoji: '✨' },
+  { id: 'long_distance', title: 'Long Distance', emoji: '✈️' },
 ];
 
 export default function RelationshipSelector({ selected, onSelect }) {
