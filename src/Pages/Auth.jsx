@@ -42,7 +42,8 @@ export default function Auth() {
         // Save to local storage for the game to use
         const userData = {
           name: attrs.name || 'User',
-          id: attrs.email, // Socket.io expects 'id'
+          id: attrs.sub, // The Cognito User ID (sub)
+          email: attrs.email,
           relationship: attrs['custom:relationship'] || 'flirty',
           gender: attrs['custom:sex'] || 'F',
           avatar: attrs.picture || CUTE_AVATARS[0]

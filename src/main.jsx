@@ -15,8 +15,8 @@ Amplify.configure({
         oauth: {
           domain: 'ap-south-1el4qg9qnc.auth.ap-south-1.amazoncognito.com',
           scopes: ['email', 'openid', 'profile'],
-          redirectSignIn: ['http://localhost:5173/'],
-          redirectSignOut: ['http://localhost:5173/'],
+          redirectSignIn: ['http://localhost:5173/', 'https://main.d2j79wds02fhhl.amplifyapp.com/'],
+          redirectSignOut: ['http://localhost:5173/', 'https://main.d2j79wds02fhhl.amplifyapp.com/'],
           responseType: 'code',
         }
       }

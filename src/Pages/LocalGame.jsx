@@ -4,6 +4,7 @@ import { recordUsedQuestion } from '../utils/history';
 import { formatCardText } from '../utils/text';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flame, AlertTriangle, XCircle, CheckCircle2, ArrowRight, Heart, LogOut, Sparkles, Zap } from 'lucide-react';
+import CinematicDeck from '../components/game/CinematicDeck';
 import BurnTransition from '../components/PremiumDice/BurnTransition';
 
 const FALLBACK_P2_AVATAR = "https://api.dicebear.com/7.x/micah/svg?seed=Leo&backgroundColor=e2e8f0";
@@ -126,6 +127,11 @@ export default function LocalGame({ socket }) {
 
     return () => { socket.off('localCardDrawn'); };
   }, [socket]);
+
+  // Scroll to top on state changes to ensure the viewport is always correctly positioned
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [card, isTransitioning, showEscalation, showGameOver]);
 
   const handleDrawCard = () => {
     if (!card && !loading) {
@@ -282,7 +288,6 @@ export default function LocalGame({ socket }) {
   const handlePartnerVerdict = (decision) => {
     const wasBossDare = card && card.type === 'Boss Dare';
     
-    // Trigger the burn animation, and schedule the rest
     setIsBurning(true);
     setPendingBurnAction(() => () => {
       if (decision === 'success') {
@@ -343,203 +348,423 @@ export default function LocalGame({ socket }) {
   };
 
   // --- WILDFIRE GAME OVER MODAL ---
-  if (showGameOver) {
+  const renderGameOver = () => {
     const cfg = ESCALATION_CONFIG.wildfire;
     const GameOverIcon = cfg.icon;
     return (
-      <div className="flex flex-col items-center justify-center w-full max-w-sm h-[80vh] px-6 mt-10">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className={`w-full bg-gradient-to-b ${cfg.bgGradient} backdrop-blur-xl border-2 ${cfg.borderColor} rounded-[3rem] p-10 text-center shadow-[0_0_80px_${cfg.glowColor}] relative overflow-hidden`}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className={`w-full bg-gradient-to-b ${cfg.bgGradient} backdrop-blur-xl border-2 ${cfg.borderColor} rounded-[3rem] p-10 text-center shadow-[0_0_80px_${cfg.glowColor}] relative overflow-hidden`}
+      >
+        <div className="absolute -top-20 -right-20 w-60 h-60 bg-orange-600/20 blur-[80px] rounded-full pointer-events-none"></div>
+        <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-red-600/20 blur-[80px] rounded-full pointer-events-none"></div>
+        
+        <GameOverIcon className={`w-16 h-16 ${cfg.iconColor} mx-auto mb-6 animate-pulse drop-shadow-[0_0_30px_${cfg.glowColor}]`} />
+        
+        <h2 className="text-2xl font-serif text-white font-black tracking-widest uppercase mb-3">
+          {cfg.title}
+        </h2>
+        <p className="text-orange-200/80 text-sm font-bold mb-8 leading-relaxed">
+          {cfg.subtitle}
+        </p>
+        
+        <button
+          onClick={() => navigate('/home', { replace: true })}
+          className="w-full py-4 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl font-black uppercase tracking-widest shadow-[0_0_30px_rgba(249,115,22,0.6)] hover:from-orange-500 hover:to-red-500 transition-all text-sm"
         >
-          <div className="absolute -top-20 -right-20 w-60 h-60 bg-orange-600/20 blur-[80px] rounded-full pointer-events-none"></div>
-          <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-red-600/20 blur-[80px] rounded-full pointer-events-none"></div>
-          
-          <GameOverIcon className={`w-16 h-16 ${cfg.iconColor} mx-auto mb-6 animate-pulse drop-shadow-[0_0_30px_${cfg.glowColor}]`} />
-          
-          <h2 className="text-2xl font-serif text-white font-black tracking-widest uppercase mb-3">
-            {cfg.title}
-          </h2>
-          <p className="text-orange-200/80 text-sm font-bold mb-8 leading-relaxed">
-            {cfg.subtitle}
-          </p>
-          
-          <button
-            onClick={() => navigate('/home', { replace: true })}
-            className="w-full py-4 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl font-black uppercase tracking-widest shadow-[0_0_30px_rgba(249,115,22,0.6)] hover:from-orange-500 hover:to-red-500 transition-all text-sm"
-          >
-            {cfg.acceptText}
-          </button>
-        </motion.div>
-      </div>
+          {cfg.acceptText}
+        </button>
+      </motion.div>
     );
-  }
+  };
 
   // --- ESCALATION DECISION MODAL ---
-  if (showEscalation) {
+  const renderEscalation = () => {
     const cfg = ESCALATION_CONFIG[currentHeatLevel];
     const EscIcon = cfg.icon;
     const deciderPlayer = deciderPlayerNum === 1 ? player1 : player2;
     return (
-      <div className="flex flex-col items-center justify-center w-full max-w-sm h-[80vh] px-6 mt-10">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.85, y: 30 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ type: 'spring', damping: 20 }}
-          className={`w-full bg-gradient-to-b ${cfg.bgGradient} backdrop-blur-xl border-2 ${cfg.borderColor} rounded-[3rem] p-8 text-center shadow-[0_0_60px_${cfg.glowColor}] relative overflow-hidden`}
-        >
-          <div className="absolute -top-20 -right-20 w-60 h-60 bg-rose-600/15 blur-[80px] rounded-full pointer-events-none"></div>
-          
-          <p className="text-[10px] uppercase tracking-[0.3em] font-black text-white/40 mb-4">
-            {deciderPlayer.name}'s Decision
-          </p>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.85, y: 30 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: 'spring', damping: 20 }}
+        className={`w-full bg-gradient-to-b ${cfg.bgGradient} backdrop-blur-xl border-2 ${cfg.borderColor} rounded-[3rem] p-8 text-center shadow-[0_0_60px_${cfg.glowColor}] relative overflow-hidden`}
+      >
+        <div className="absolute -top-20 -right-20 w-60 h-60 bg-rose-600/15 blur-[80px] rounded-full pointer-events-none"></div>
+        
+        <p className="text-[10px] uppercase tracking-[0.3em] font-black text-white/40 mb-4">
+          {deciderPlayer.name}'s Decision
+        </p>
 
-          <motion.div
-            animate={{ scale: [1, 1.15, 1] }}
-            transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-          >
-            <EscIcon className={`w-14 h-14 ${cfg.iconColor} mx-auto mb-5 drop-shadow-[0_0_25px_${cfg.glowColor}]`} />
-          </motion.div>
-          
-          <h2 className="text-xl font-serif text-white font-black tracking-wider uppercase mb-2">
-            {cfg.title}
-          </h2>
-          <p className="text-rose-200/70 text-sm font-bold mb-8">
-            {cfg.subtitle}
-          </p>
-          
-          <div className="space-y-3">
-            <button
-              onClick={handleEscalationAccept}
-              className={`w-full py-4 bg-gradient-to-r from-rose-600 to-red-600 text-white rounded-xl font-black uppercase tracking-widest shadow-[0_0_25px_${cfg.glowColor}] hover:from-rose-500 hover:to-red-500 transition-all text-xs`}
-            >
-              {cfg.acceptText}
-            </button>
-            {cfg.declineText && (
-              <button
-                onClick={handleEscalationDecline}
-                className="w-full py-3 bg-black/60 text-rose-300 border border-rose-900/50 rounded-xl font-black uppercase tracking-widest hover:bg-rose-950/40 transition-all text-[11px]"
-              >
-                {cfg.declineText}
-              </button>
-            )}
-          </div>
+        <motion.div
+          animate={{ scale: [1, 1.15, 1] }}
+          transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+        >
+          <EscIcon className={`w-14 h-14 ${cfg.iconColor} mx-auto mb-5 drop-shadow-[0_0_25px_${cfg.glowColor}]`} />
         </motion.div>
-      </div>
+        
+        <h2 className="text-xl font-serif text-white font-black tracking-wider uppercase mb-2">
+          {cfg.title}
+        </h2>
+        <p className="text-rose-200/70 text-sm font-bold mb-8">
+          {cfg.subtitle}
+        </p>
+        
+        <div className="space-y-3">
+          <button
+            onClick={handleEscalationAccept}
+            className={`w-full py-4 bg-gradient-to-r from-rose-600 to-red-600 text-white rounded-xl font-black uppercase tracking-widest shadow-[0_0_25px_${cfg.glowColor}] hover:from-rose-500 hover:to-red-500 transition-all text-xs`}
+          >
+            {cfg.acceptText}
+          </button>
+          {cfg.declineText && (
+            <button
+              onClick={handleEscalationDecline}
+              className="w-full py-3 bg-black/60 text-rose-300 border border-rose-900/50 rounded-xl font-black uppercase tracking-widest hover:bg-rose-950/40 transition-all text-[11px]"
+            >
+              {cfg.declineText}
+            </button>
+          )}
+        </div>
+      </motion.div>
     );
-  }
+  };
 
   // --- TRANSITION SCREEN (PASS THE PHONE) ---
-  if (isTransitioning) {
+  const renderTransitionScreen = () => {
     return (
-      <div className="flex flex-col items-center justify-center w-full max-w-sm h-[80vh] text-center space-y-8 px-6 bg-black/40 backdrop-blur-xl rounded-[3rem] border border-rose-500/30 shadow-[0_0_50px_rgba(244,63,94,0.2)] mt-10">
-        <ArrowRight className="w-20 h-20 text-rose-500 animate-bounce drop-shadow-[0_0_15px_rgba(244,63,94,0.8)]" />
-        
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="flex flex-col items-center justify-center w-full text-center relative px-4"
+      >
+        {/* Background Glow */}
+        <motion.div 
+          animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.5, 0.3] }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute inset-0 bg-rose-600/20 blur-[100px] rounded-full pointer-events-none"
+        />
+
         {justEscalated && (
-          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-rose-950/80 border border-rose-500 p-5 rounded-3xl animate-pulse shadow-[0_0_40px_rgba(244,63,94,0.5)] w-full">
-            <h3 className="text-2xl font-black text-rose-400 uppercase tracking-widest mb-2">🔥 Level Up! 🔥</h3>
-            <p className="text-white text-sm font-bold uppercase tracking-wider leading-relaxed">
-              Now entering the <br/> <span className="text-rose-400 text-lg font-black">{heatDisplayName}</span> stage.
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mb-8 bg-gradient-to-b from-rose-950/80 to-black/80 border border-rose-500/40 p-5 rounded-3xl shadow-[0_0_30px_rgba(244,63,94,0.3)] w-full relative z-10"
+          >
+            <h3 className="text-xl font-black text-rose-400 uppercase tracking-widest mb-1 drop-shadow-md">🔥 Level Up! 🔥</h3>
+            <p className="text-white/80 text-xs font-bold uppercase tracking-wider">
+              Entering the <span className="text-rose-400 text-sm font-black drop-shadow-sm">{heatDisplayName}</span> stage
             </p>
           </motion.div>
         )}
 
-        <div>
-          <h2 className="text-3xl font-serif text-white font-black tracking-widest uppercase">Pass the Device</h2>
-          <p className="text-rose-300/80 text-sm mt-4 uppercase tracking-widest font-bold">
-            Hand it over to <span className="text-white text-lg block mt-2">{activePlayer.name}</span>
+        {/* Title */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.8, ease: 'easeOut' }}
+          className="relative z-10"
+        >
+          <h2 className="text-[28px] leading-tight font-serif text-white font-black tracking-wide drop-shadow-[0_0_20px_rgba(244,63,94,0.6)]">
+            That was interesting... 👀
+          </h2>
+        </motion.div>
+
+        {/* Handoff Message */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.0, duration: 0.8 }}
+          className="mt-5 mb-8 space-y-1 relative z-10"
+        >
+          <p className="text-rose-300/90 text-sm font-bold tracking-widest uppercase drop-shadow-md">
+            Your turn is over. ❤️
           </p>
-        </div>
-        <button onClick={() => { setIsTransitioning(false); setJustEscalated(false); }} className="w-full py-4 bg-rose-600 text-white font-black uppercase tracking-widest rounded-xl shadow-[0_0_30px_rgba(244,63,94,0.6)] hover:bg-rose-500 transition-all">
-          I am {activePlayer.name}, Start!
-        </button>
-      </div>
+          <p className="text-white/50 text-[10px] uppercase tracking-[0.25em] font-black">
+            Pass the phone to {activePlayer.name}
+          </p>
+        </motion.div>
+
+        {/* Avatar */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 1.5, type: 'spring', damping: 15 }}
+          className="relative mb-8 z-10"
+        >
+          {/* Glowing rings */}
+          <div className="absolute -inset-4 border border-rose-500/30 rounded-full animate-ping" style={{ animationDuration: '3s' }} />
+          <div className="absolute -inset-2 border-2 border-rose-500/50 rounded-full animate-pulse" />
+          
+          <img 
+            src={activePlayer.avatar} 
+            alt={activePlayer.name}
+            className="w-24 h-24 rounded-full object-cover border-[3px] border-rose-500 shadow-[0_0_40px_rgba(244,63,94,0.8)] relative z-10"
+          />
+        </motion.div>
+
+        {/* Player Name & Deck text */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.8 }}
+          className="mb-10 relative z-10"
+        >
+          <h3 className="text-2xl font-black text-white uppercase tracking-widest drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
+            {activePlayer.name}
+          </h3>
+          <p className="text-rose-400/80 text-[10px] font-black uppercase tracking-[0.3em] mt-2 drop-shadow-sm">
+            The deck is waiting...
+          </p>
+        </motion.div>
+
+        {/* Start Button */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 2.2, type: 'spring', damping: 20 }}
+          className="w-full relative z-20"
+        >
+          <motion.button 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => { setIsTransitioning(false); setJustEscalated(false); }}
+            className="w-full py-4 rounded-2xl font-black uppercase tracking-widest text-xs relative overflow-hidden group shadow-[0_0_40px_rgba(220,38,38,0.5)] border border-rose-400/50"
+            style={{
+              background: 'linear-gradient(135deg, #be123c, #e11d48)'
+            }}
+          >
+            <div className="absolute inset-0 bg-white/20 translate-y-[-100%] group-hover:translate-y-[100%] transition-transform duration-700 ease-in-out pointer-events-none" />
+            <span className="relative text-white drop-shadow-md">I'M {activePlayer.name} — LET'S GO 🔥</span>
+          </motion.button>
+        </motion.div>
+      </motion.div>
     );
-  }
+  };
 
   return (
-    <div className="flex flex-col items-center w-full max-w-sm space-y-6 relative pt-4 px-2">
+    <div className="w-full min-h-[100dvh] bg-black text-white relative flex flex-col overflow-x-hidden">
       
-      {/* --- 🔴 THE PREMIUM MOBILE HUD --- */}
-      <div className="w-full bg-neutral-950/80 backdrop-blur-xl border border-rose-500/30 rounded-full p-2 flex justify-between items-center shadow-[0_0_30px_rgba(244,63,94,0.15)] relative z-20">
+      {/* Global Atmosphere Elements */}
+      <div className="intimacy-vignette" />
+      <div className="lux-light-leak" style={{ top: '-10%', left: '-20%', '--leak-color': 'rgba(239,68,68,0.15)', '--dur': '25s' }} />
+      <div className="lux-light-leak" style={{ bottom: '-10%', right: '-20%', '--leak-color': 'rgba(236,72,153,0.1)', '--dur': '30s' }} />
+
+      <div className="flex-1 w-full max-w-sm mx-auto flex flex-col relative z-10 pt-safe-top pb-safe-bottom">
         
-        {/* Player 1 (Left) */}
-        <div className={`flex items-center space-x-3 w-1/3 transition-all duration-500 ${activePlayerNum === 1 ? 'opacity-100 scale-105' : 'opacity-40 grayscale-[30%]'}`}>
-          <img src={player1.avatar} className={`w-12 h-12 rounded-full object-cover border-2 ${activePlayerNum === 1 ? 'border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.6)]' : 'border-neutral-700'}`} alt="P1" />
-          <div className="text-left hidden sm:block">
-            <p className="text-white font-black text-[10px] uppercase tracking-wider truncate w-16">{player1.name}</p>
-            {activePlayerNum === 1 && <p className="text-rose-400 font-black text-[8px] uppercase tracking-widest animate-pulse">Acting</p>}
+        {/* ========================================= */}
+        {/* TOP SECTION: Controls, HUD, Heat Meter      */}
+        {/* ========================================= */}
+        <div className="w-full px-4 pt-4 flex flex-col space-y-4 shrink-0">
+          
+          {/* QUIT BUTTON */}
+          <div className="w-full flex justify-start">
+            <button onClick={() => navigate('/home', { replace: true })} className="text-white/40 hover:text-rose-500 flex items-center space-x-1.5 transition-colors bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 hover:border-rose-500/50 shadow-lg">
+              <LogOut className="w-3 h-3" /> <span className="text-[9px] uppercase font-black tracking-widest">Quit</span>
+            </button>
           </div>
-        </div>
 
-        {/* Center VS Element with Heat Level */}
-        <div className="flex flex-col items-center justify-center w-1/3">
-          <div className="relative flex items-center justify-center">
-            <Heart className="w-8 h-8 text-rose-600 animate-pulse fill-current drop-shadow-[0_0_15px_rgba(244,63,94,0.8)]" />
-            <span className="absolute text-white text-[9px] font-black italic mt-0.5">VS</span>
-          </div>
-          <span className={`text-[7px] font-black uppercase tracking-widest mt-1 ${heatColors[currentHeatLevel]}`}>{heatDisplayName}</span>
-        </div>
+          {/* --- 🔴 YOU ❤️ PARTNER COMPOSITION --- */}
+          <div className="w-full flex justify-between items-center relative z-20 mt-2">
+            {/* Subtle connecting line */}
+            <div className="absolute top-1/2 left-10 right-10 h-[1px] bg-gradient-to-r from-transparent via-rose-500/20 to-transparent -z-10" />
+            
+            {/* Player 1 (Left) */}
+            <div className={`flex flex-col items-center space-y-2 transition-all duration-700 ${activePlayerNum === 1 ? 'opacity-100 scale-105' : 'opacity-40 grayscale-[50%]'}`}>
+              <div className={`relative p-1 rounded-full ${activePlayerNum === 1 ? 'lux-edge-glow shadow-[0_0_20px_rgba(244,63,94,0.4)]' : 'border border-neutral-800'}`}>
+                <img src={player1.avatar} className="w-12 h-12 rounded-full object-cover" alt="P1" />
+              </div>
+              <div className="text-center">
+                <p className="text-white font-black text-[9px] uppercase tracking-[0.2em]">{player1.name}</p>
+              </div>
+            </div>
 
-        {/* Player 2 (Right) */}
-        <div className={`flex items-center justify-end space-x-3 w-1/3 transition-all duration-500 ${activePlayerNum === 2 ? 'opacity-100 scale-105' : 'opacity-40 grayscale-[30%]'}`}>
-          <div className="text-right hidden sm:block">
-            <p className="text-white font-black text-[10px] uppercase tracking-wider truncate w-16">{player2.name}</p>
-            {activePlayerNum === 2 && <p className="text-rose-400 font-black text-[8px] uppercase tracking-widest animate-pulse">Acting</p>}
-          </div>
-          <img src={player2.avatar} className={`w-12 h-12 rounded-full object-cover border-2 ${activePlayerNum === 2 ? 'border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.6)]' : 'border-neutral-700'}`} alt="P2" />
-        </div>
-      </div>
-
-      {/* SETTINGS DISPLAY */}
-      <div className="w-full px-4 relative z-20 -mt-4 mb-2 flex justify-center space-x-2">
-        <span className="bg-black/50 border border-[#54152A]/50 text-white/50 text-[8px] uppercase tracking-widest font-black py-1 px-2 rounded-full">
-          Turn Order: {state?.turnOrder || 'Alternate'}
-        </span>
-        {state?.timer > 0 && (
-          <span className="bg-black/50 border border-[#54152A]/50 text-white/50 text-[8px] uppercase tracking-widest font-black py-1 px-2 rounded-full">
-            Timer: {state?.timer}s
-          </span>
-        )}
-      </div>
-
-      {/* HEAT METER */}
-      <div className="w-full px-2 relative z-20 -mt-2 mb-2">
-        <div className="flex justify-between items-end mb-1 px-1">
-          <span className="text-rose-400 font-black uppercase text-[8px] tracking-[0.2em]">Heat Meter</span>
-          <span className="text-white font-black text-[9px]">{heatScore}%</span>
-        </div>
-        <div className="w-full h-3 bg-neutral-900 border border-neutral-700/50 rounded-full overflow-hidden relative shadow-inner">
-          <motion.div 
-            className="h-full bg-gradient-to-r from-yellow-500 via-orange-500 to-red-600 shadow-[0_0_10px_rgba(220,38,38,0.8)]"
-            initial={{ width: 0 }}
-            animate={{ width: `${heatScore}%` }}
-            transition={{ type: "spring", stiffness: 100, damping: 15 }}
-          />
-        </div>
-        <AnimatePresence>
-          {heatScore === 100 && (
-            <motion.div 
-              initial={{ opacity: 0, y: -5 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              className="text-center mt-2"
-            >
-              <p className="text-red-500 animate-pulse font-black uppercase tracking-widest text-[10px] drop-shadow-[0_0_8px_rgba(220,38,38,0.8)]">
-                Maximum Heat Reached...<br/>Boss Dare Unlocked!
+            {/* Center Heartbeat & Status */}
+            <div className="flex flex-col items-center justify-center">
+              <Heart className="w-6 h-6 text-rose-600 animate-heartbeat-glow drop-shadow-[0_0_15px_rgba(244,63,94,0.8)] fill-current" />
+              <span className={`text-[7px] font-black uppercase tracking-[0.3em] mt-2 ${heatColors[currentHeatLevel]}`}>{heatDisplayName}</span>
+              <p className="text-rose-300/80 font-bold text-[8px] uppercase tracking-widest mt-1">
+                {activePlayerNum === 1 ? `Your Turn ❤️` : `Their Turn 👀`}
               </p>
+            </div>
+
+            {/* Player 2 (Right) */}
+            <div className={`flex flex-col items-center space-y-2 transition-all duration-700 ${activePlayerNum === 2 ? 'opacity-100 scale-105' : 'opacity-40 grayscale-[50%]'}`}>
+              <div className={`relative p-1 rounded-full ${activePlayerNum === 2 ? 'lux-edge-glow shadow-[0_0_20px_rgba(244,63,94,0.4)]' : 'border border-neutral-800'}`}>
+                <img src={player2.avatar} className="w-12 h-12 rounded-full object-cover" alt="P2" />
+              </div>
+              <div className="text-center">
+                <p className="text-white font-black text-[9px] uppercase tracking-[0.2em]">{player2.name}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* SETTINGS DISPLAY */}
+          <div className="w-full relative z-20 flex justify-center space-x-2 mt-2">
+            <span className="bg-black/50 border border-[#54152A]/50 text-white/50 text-[8px] uppercase tracking-widest font-black py-1 px-2 rounded-full">
+              Turn Order: {state?.turnOrder || 'Alternate'}
+            </span>
+            {state?.timer > 0 && (
+              <span className="bg-black/50 border border-[#54152A]/50 text-white/50 text-[8px] uppercase tracking-widest font-black py-1 px-2 rounded-full">
+                Timer: {state?.timer}s
+              </span>
+            )}
+          </div>
+
+          {/* HEAT METER */}
+          <div className="w-full relative z-20 mt-2">
+            <div className="flex justify-between items-end mb-1 px-1">
+              <span className="text-rose-400 font-black uppercase text-[8px] tracking-[0.2em]">Heat Meter</span>
+              <span className="text-white font-black text-[9px]">{heatScore}%</span>
+            </div>
+            <div className="w-full h-3 bg-neutral-900 border border-neutral-700/50 rounded-full overflow-hidden relative shadow-inner">
+              <motion.div 
+                className="h-full bg-gradient-to-r from-yellow-500 via-orange-500 to-red-600 shadow-[0_0_10px_rgba(220,38,38,0.8)]"
+                initial={{ width: 0 }}
+                animate={{ width: `${heatScore}%` }}
+                transition={{ type: "spring", stiffness: 100, damping: 15 }}
+              />
+            </div>
+            <AnimatePresence>
+              {heatScore === 100 && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -5 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  className="text-center mt-2"
+                >
+                  <p className="text-red-500 animate-pulse font-black uppercase tracking-widest text-[10px] drop-shadow-[0_0_8px_rgba(220,38,38,0.8)]">
+                    Maximum Heat Reached...<br/>Boss Dare Unlocked!
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* ========================================= */}
+        {/* CENTER SECTION: Naughty Deck              */}
+        {/* ========================================= */}
+        <div className="flex-1 w-full flex items-center justify-center min-h-[460px] py-4">
+          <div className="w-[300px] sm:w-[320px] relative flex items-center justify-center">
+            <AnimatePresence mode="wait">
+              {showGameOver ? (
+                <motion.div key="game-over" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full">
+                  {renderGameOver()}
+                </motion.div>
+              ) : showEscalation ? (
+                <motion.div key="escalation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full">
+                  {renderEscalation()}
+                </motion.div>
+              ) : isTransitioning ? (
+                <motion.div key="transition" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full">
+                  {renderTransitionScreen()}
+                </motion.div>
+              ) : (
+                <motion.div key="deck" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-[440px]">
+                  <BurnTransition
+                    isBurning={isBurning}
+                    onComplete={() => {
+                      setIsBurning(false);
+                      if (pendingBurnAction) {
+                        pendingBurnAction();
+                        setPendingBurnAction(null);
+                      }
+                    }}
+                  >
+                    <CinematicDeck 
+                      card={card}
+                      loading={loading}
+                      isMyTurn={true} // In local game, it's always "my turn" because device is shared
+                      onDraw={handleDrawCard}
+                      activePlayerName={activePlayer.name}
+                      inactivePlayerName={inactivePlayer.name}
+                      heatLevel={currentHeatLevel}
+                    />
+                  </BurnTransition>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* ========================================= */}
+        {/* BOTTOM SECTION: Interaction Controls      */}
+        {/* ========================================= */}
+        <div className="w-full px-4 pb-6 shrink-0 z-30 min-h-[160px] flex flex-col justify-end">
+          
+          <div className="text-center mb-2">
+            {refusalDenied && (
+              <p className="text-rose-400 font-black animate-pulse uppercase tracking-widest text-sm bg-rose-950/50 px-4 py-1 rounded-full border border-rose-500/30 inline-block">No Mercy! Do it.</p>
+            )}
+          </div>
+
+          {/* ACTIVE PLAYER: REFUSE */}
+          {card && !judgmentMode && !refusalDenied && (
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex justify-center mb-6">
+              <button onClick={handleRefuse} className="px-6 py-2.5 bg-black/40 backdrop-blur-md text-rose-500 border border-rose-900/50 rounded-full font-black uppercase text-[9px] tracking-[0.2em] hover:bg-rose-950/50 flex items-center justify-center space-x-2 transition-all shadow-[0_0_15px_rgba(244,63,94,0.1)]">
+                <AlertTriangle className="w-3 h-3" /> <span>Refuse & Strip</span>
+              </button>
             </motion.div>
           )}
-        </AnimatePresence>
+
+          {/* PARTNER VERIFICATION SECTION */}
+          {card && !judgmentMode && !refusalDenied && (
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="pt-4 border-t border-neutral-800">
+              <div className="text-center mb-4">
+                <p className="text-rose-400/80 font-black text-[9px] uppercase tracking-[0.3em]">
+                  Partner Verification
+                </p>
+                <p className="text-white/40 text-[8px] uppercase font-bold tracking-widest mt-1">
+                  Hand phone to {inactivePlayer.name}
+                </p>
+              </div>
+              <div className="flex flex-col space-y-3">
+                <button onClick={() => handlePartnerVerdict('success')} className="w-full py-3.5 bg-gradient-to-r from-emerald-600/90 to-teal-600/90 backdrop-blur-md text-white rounded-full font-black uppercase text-[10px] tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:from-emerald-500 hover:to-teal-500 transition-all flex justify-center items-center space-x-2 border border-emerald-500/50">
+                  <CheckCircle2 className="w-4 h-4" /> <span>They nailed it. (Satisfied)</span>
+                </button>
+                <button onClick={() => handlePartnerVerdict('fail')} className="w-full py-3.5 bg-black/60 backdrop-blur-md border border-red-900/50 text-red-500 rounded-full font-black uppercase text-[10px] tracking-widest hover:bg-red-950/40 transition-all flex justify-center items-center space-x-2">
+                  <XCircle className="w-4 h-4" /> <span>Not good enough. Strip.</span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Refused & Denied (No Mercy) */}
+          {refusalDenied && (
+            <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
+              <button onClick={handleRefusalDeniedComplete} className="w-full py-4 bg-gradient-to-r from-rose-900 to-red-900 text-white border border-rose-500/50 rounded-full font-black uppercase text-xs tracking-widest shadow-[0_0_30px_rgba(244,63,94,0.3)] mt-4 flex justify-center items-center space-x-2">
+                <span>Fine. I Completed It.</span> <ArrowRight className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
+
+          {/* Judgment Mode (Partner decides) */}
+          {judgmentMode && (
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex flex-col space-y-4 p-5 bg-black/60 backdrop-blur-xl border border-rose-900/50 rounded-3xl shadow-2xl mt-4">
+              <p className="text-center font-black text-white mb-2 uppercase text-[10px] tracking-[0.2em] animate-pulse">
+                {inactivePlayer.name}, show mercy?
+              </p>
+              <div className="flex space-x-3">
+                <button onClick={() => handleJudgment('strip')} className="flex-1 py-3 bg-black/40 border border-emerald-900/50 text-emerald-400 rounded-full font-black flex items-center justify-center space-x-1 hover:bg-emerald-950/40 transition-colors shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                  <CheckCircle2 className="w-3 h-3" /> <span className="text-[9px] uppercase tracking-widest">Mercy</span>
+                </button>
+                <button onClick={() => handleJudgment('force')} className="flex-1 py-3 bg-gradient-to-r from-rose-600/90 to-red-600/90 text-white rounded-full font-black flex items-center justify-center space-x-1 shadow-[0_0_20px_rgba(244,63,94,0.3)] hover:from-rose-500 border border-rose-500/50 transition-colors">
+                  <XCircle className="w-3 h-3" /> <span className="text-[9px] uppercase tracking-widest">No Mercy</span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </div>
       </div>
-      {/* ---------------------------------- */}
-
-
-      {/* Penalty Notifications */}
+      
+      {/* Notifications overlaying everything */}
       <AnimatePresence>
         {penaltyMessage && (
           <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -50, opacity: 0 }}
-            className="absolute top-16 w-[90%] bg-rose-600 text-white font-black uppercase tracking-widest text-xs text-center py-3 rounded-xl shadow-[0_0_30px_rgba(244,63,94,0.8)] z-50">
+            className="fixed top-20 left-1/2 transform -translate-x-1/2 w-[90%] max-w-sm bg-rose-600 text-white font-black uppercase tracking-widest text-xs text-center py-3 rounded-xl shadow-[0_0_30px_rgba(244,63,94,0.8)] z-[200]">
             {penaltyMessage}
           </motion.div>
         )}
@@ -563,144 +788,6 @@ export default function LocalGame({ socket }) {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <div className="text-center">
-        {refusalDenied && (
-          <p className="text-rose-400 font-black animate-pulse mt-2 uppercase tracking-widest text-sm bg-rose-950/50 px-4 py-1 rounded-full border border-rose-500/30">No Mercy! Do it.</p>
-        )}
-      </div>
-
-      {/* The Premium Glass Card */}
-      <div className="relative w-72 h-[24rem] cursor-pointer" onClick={handleDrawCard} style={{ perspective: 1200 }}>
-        <AnimatePresence>
-          {!card ? (
-            <motion.div 
-              key="back" 
-              initial={{ rotateY: 0 }}
-              animate={{ rotateY: 0 }}
-              exit={{ rotateY: -180 }}
-              transition={{ duration: 0.6, ease: 'easeInOut' }}
-              style={{ backfaceVisibility: 'hidden' }}
-              className={`absolute inset-0 w-full h-full rounded-[2rem] border border-rose-500/30 backdrop-blur-xl bg-black/40 flex flex-col items-center justify-center shadow-[0_0_50px_rgba(244,63,94,0.15)] hover:scale-105 hover:border-rose-500/60 transition-all duration-300`}
-            >
-               <div className="absolute inset-0 bg-gradient-to-br from-rose-900/10 to-transparent rounded-[2rem]"></div>
-               <Flame className={`w-20 h-20 text-rose-600 mb-6 opacity-90 drop-shadow-[0_0_20px_rgba(244,63,94,1)] ${loading ? 'animate-spin' : 'animate-pulse'}`} />
-               <span className="text-rose-200/60 uppercase tracking-[0.4em] text-xs font-black h-4 flex items-center justify-center">
-                 {loading ? (
-                   <span className="flex space-x-1 text-base">
-                     <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 1, delay: 0 }}>.</motion.span>
-                     <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}>.</motion.span>
-                     <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}>.</motion.span>
-                   </span>
-                 ) : (
-                   "Tap to Reveal"
-                 )}
-               </span>
-            </motion.div>
-          ) : (
-            <motion.div 
-              key="front" 
-              initial={{ rotateY: 180 }}
-              animate={{ rotateY: 0 }}
-              exit={{ rotateY: 180 }}
-              transition={{ duration: 0.6, ease: 'easeInOut' }}
-              style={{ backfaceVisibility: 'hidden' }}
-              className={`absolute inset-0 w-full h-full rounded-[2rem] border-2 backdrop-blur-2xl shadow-[0_0_60px_rgba(244,63,94,0.4)] overflow-hidden ${card.type === 'Virtual Dare' ? 'border-rose-500 bg-rose-950/50' : card.type === 'Boss Dare' ? 'border-red-600 bg-red-950/80 shadow-[0_0_80px_rgba(220,38,38,0.6)]' : 'border-pink-400 bg-black/60'}`}
-            >
-              <BurnTransition 
-                isBurning={isBurning} 
-                onComplete={() => {
-                  setIsBurning(false);
-                  if (pendingBurnAction) {
-                    pendingBurnAction();
-                    setPendingBurnAction(null);
-                  }
-                }}
-              >
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center w-full h-full">
-                  <div className="absolute -top-20 -right-20 w-40 h-40 bg-rose-600/20 blur-[50px] rounded-full pointer-events-none"></div>
-                  
-                  <div className={`text-[10px] uppercase tracking-[0.3em] font-black mb-6 border px-3 py-1.5 rounded-full z-10 ${card.type === 'Virtual Dare' ? 'text-rose-400 border-rose-400/50 bg-rose-950/50' : card.type === 'Boss Dare' ? 'text-red-500 border-red-500/80 bg-red-900/40 drop-shadow-[0_0_5px_rgba(220,38,38,1)] text-xs' : 'text-pink-300 border-pink-300/50 bg-pink-950/50'}`}>
-                    {card.type}
-                  </div>
-                  <p className={`text-2xl font-serif leading-snug text-white z-10 drop-shadow-md ${card.type === 'Boss Dare' ? 'font-black tracking-wide drop-shadow-[0_0_8px_rgba(220,38,38,0.8)]' : ''}`}>
-                    {formatCardText(
-                      card.text, 
-                      activePlayerNum === 1 ? player1.name : player2.name,
-                      activePlayerNum === 1 ? player2.name : player1.name
-                    )}
-                  </p>
-                </div>
-              </BurnTransition>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Dynamic Action Area */}
-      <div className="h-auto w-full flex flex-col justify-center px-4 pb-4">
-        
-        {/* Active Player Controls - Only Refuse */}
-        {card && !judgmentMode && !refusalDenied && (
-          <div className="space-y-4">
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex flex-col space-y-4">
-              <button onClick={handleRefuse} className="w-full py-2.5 bg-neutral-950 text-rose-500 border border-rose-900 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-rose-950 flex items-center justify-center space-x-2 transition-all shadow-[0_0_15px_rgba(244,63,94,0.2)]">
-                <AlertTriangle className="w-4 h-4" /> <span>Refuse & Strip</span>
-              </button>
-            </motion.div>
-
-            {/* PARTNER VERIFICATION SECTION */}
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="pt-2 border-t border-rose-900/50">
-              <div className="text-center mb-3">
-                <p className="text-rose-400 font-black text-[10px] uppercase tracking-widest">
-                  Partner Verification
-                </p>
-                <p className="text-white/60 text-[9px] uppercase font-bold tracking-widest">
-                  Hand phone to {inactivePlayer.name}
-                </p>
-              </div>
-              <div className="flex flex-col space-y-2">
-                <button onClick={() => handlePartnerVerdict('success')} className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:from-emerald-500 hover:to-teal-500 transition-all flex justify-center items-center space-x-2">
-                  <CheckCircle2 className="w-4 h-4" /> <span>They nailed it. (Satisfied)</span>
-                </button>
-                <button onClick={() => handlePartnerVerdict('fail')} className="w-full py-3 bg-neutral-950 border border-red-600 text-red-500 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-red-950/30 transition-all flex justify-center items-center space-x-2">
-                  <XCircle className="w-4 h-4" /> <span>Not good enough. Strip.</span>
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {/* Refused & Denied (No Mercy) */}
-        {refusalDenied && (
-          <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
-            <button onClick={handleRefusalDeniedComplete} className="w-full py-4 bg-rose-900 text-white border-2 border-rose-500 rounded-xl font-black uppercase text-xs tracking-widest shadow-[0_0_30px_rgba(244,63,94,0.6)]">
-              Fine. I Completed It.
-            </button>
-          </motion.div>
-        )}
-
-        {/* Judgment Mode (Partner decides) */}
-        {judgmentMode && (
-          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex flex-col space-y-3 p-3 bg-rose-950/80 border border-rose-500 rounded-2xl shadow-2xl">
-            <p className="text-center font-black text-white mb-1 uppercase text-[10px] tracking-widest animate-pulse">
-              {inactivePlayer.name}, show mercy?
-            </p>
-            <div className="flex space-x-2">
-              <button onClick={() => handleJudgment('strip')} className="flex-1 py-2 bg-neutral-950 border border-rose-500 text-rose-400 rounded-lg font-black flex items-center justify-center space-x-1 hover:bg-rose-900 transition-colors">
-                <CheckCircle2 className="w-3 h-3" /> <span className="text-[10px] uppercase tracking-wider">Mercy</span>
-              </button>
-              <button onClick={() => handleJudgment('force')} className="flex-1 py-2 bg-rose-600 text-white rounded-lg font-black flex items-center justify-center space-x-1 shadow-lg hover:bg-rose-500 transition-colors">
-                <XCircle className="w-3 h-3" /> <span className="text-[10px] uppercase tracking-wider">No Mercy</span>
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </div>
-
-      <button onClick={() => navigate('/home', { replace: true })} className="absolute -top-2 left-4 text-neutral-500 hover:text-rose-500 flex items-center space-x-1 transition-colors">
-        <LogOut className="w-4 h-4" /> <span className="text-[9px] uppercase font-black tracking-widest">Quit Game</span>
-      </button>
     </div>
   );
 }
